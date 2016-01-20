@@ -8,10 +8,15 @@
 #include <algorithm>
 #include <vector>
 #include <cassert>
+#include <set>
+#include <vector>
+#include <map>
+#include <array>
 
 #include "CME212/Util.hpp"
 #include "CME212/Point.hpp"
 
+using namespace std;
 
 /** @class Graph
  * @brief A template for 3D undirected graphs.
@@ -22,13 +27,12 @@
 class Graph {
  private:
 
-  // HW0: YOUR CODE HERE
-  // Use this space for declarations of important internal types you need
-  // later in the Graph's definition.
-  // (As with all the "YOUR CODE HERE" markings, you may not actually NEED
-  // code here. Just use the space if you need it.)
-
- public:
+   /* Graph containers */
+   vector<Point> nodes;
+   //vector<std::array<int,2> > edges;
+   vector<std::array<unsigned int,2> > edges;
+ 
+public:
 
   //
   // PUBLIC TYPE DEFINITIONS
@@ -58,7 +62,7 @@ class Graph {
 
   /** Construct an empty graph. */
   Graph() {
-    // HW0: YOUR CODE HERE
+ 	/* Nothing to define here */   
   }
 
   /** Default destructor */
@@ -91,30 +95,30 @@ class Graph {
      * @endcode
      */
     Node() {
-      // HW0: YOUR CODE HERE
+     /* Node's constructor is defined in Node's private section */ 
     }
 
     /** Return this node's position. */
     const Point& position() const {
-      // HW0: YOUR CODE HERE
-      return Point();
+	/* return the point */
+	return myGraph->nodes[id]; 	 
     }
 
     /** Return this node's index, a number in the range [0, graph_size). */
     size_type index() const {
-      // HW0: YOUR CODE HERE
-      return size_type(-1);
-    }
+    
+      return this->id;
+   }
 
     /** Test whether this node and @a n are equal.
      *
      * Equal nodes have the same graph and the same index.
      */
     bool operator==(const Node& n) const {
-      // HW0: YOUR CODE HERE
-      (void) n;          // Quiet compiler warning
-      return false;
+      
+      return (this->id == n.id) && (this->myGraph == n.myGraph); 
     }
+
 
     /** Test whether this node is less than @a n in a global order.
      *
@@ -125,27 +129,31 @@ class Graph {
      * and y, exactly one of x == y, x < y, and y < x is true.
      */
     bool operator<(const Node& n) const {
-      // HW0: YOUR CODE HERE
-      (void) n;           // Quiet compiler warning
-      return false;
-    }
+    
+      return (this->id < n.id) && (this->myGraph < n.myGraph); 
+     }
 
    private:
     // Allow Graph to access Node's private member data and functions.
     friend class Graph;
-    // HW0: YOUR CODE HERE
-    // Use this space to declare private data members and methods for Node
-    // that will not be visible to users, but may be useful within Graph.
-    // i.e. Graph needs a way to construct valid Node objects
-  };
+	
+    size_type id;
+    graph_type *myGraph;
+
+    Node(size_type id, const graph_type* myGraph){
+	this->id = id;
+	this->myGraph = const_cast<graph_type*> (myGraph);
+    };
+
+   };
 
   /** Return the number of nodes in the graph.
    *
    * Complexity: O(1).
    */
   size_type size() const {
-    // HW0: YOUR CODE HERE
-    return 0;
+    
+    return nodes.size(); 
   }
 
   /** Synonym for size(). */
@@ -161,10 +169,12 @@ class Graph {
    * Complexity: O(1) amortized operations.
    */
   Node add_node(const Point& position) {
-    // HW0: YOUR CODE HERE
-    (void) position;      // Quiet compiler warning
-    return Node();        // Invalid node
-  }
+	
+      nodes.push_back(position);
+      Node n(size()-1, this); 
+      return n; 
+
+   }
 
   /** Determine if a Node belongs to this Graph
    * @return True if @a n is currently a Node of this Graph
@@ -172,10 +182,9 @@ class Graph {
    * Complexity: O(1).
    */
   bool has_node(const Node& n) const {
-    // HW0: YOUR CODE HERE
-    (void) n;            // Quiet compiler warning
-    return false;
-  }
+  
+    return n.id < size();
+   }
 
   /** Return the node with index @a i.
    * @pre 0 <= @a i < num_nodes()
@@ -184,10 +193,10 @@ class Graph {
    * Complexity: O(1).
    */
   Node node(size_type i) const {
-    // HW0: YOUR CODE HERE
-    (void) i;             // Quiet compiler warning
-    return Node();        // Invalid node
-  }
+    /* return the node */
+    Node n(i, this); 
+    return n;
+ }
 
   //
   // EDGES
@@ -208,14 +217,15 @@ class Graph {
 
     /** Return a node of this Edge */
     Node node1() const {
-      // HW0: YOUR CODE HERE
-      return Node();      // Invalid Node
+      
+      Node n(first_node, myGraph); 
+      return n;      
     }
 
     /** Return the other node of this Edge */
     Node node2() const {
-      // HW0: YOUR CODE HERE
-      return Node();      // Invalid Node
+      Node n(second_node, myGraph); 
+      return n;      
     }
 
     /** Test whether this edge and @a e are equal.
@@ -223,8 +233,11 @@ class Graph {
      * Equal edges represent the same undirected edge between two nodes.
      */
     bool operator==(const Edge& e) const {
-      (void) e;           // Quiet compiler warning
-      return false;
+      
+	return ((((e.first_node == this->first_node) && (e.second_node == this->second_node)) || 
+                ((e.first_node == this->second_node) && (e.second_node == this->first_node))) &&
+		(e.myGraph == this->myGraph)); 
+
     }
 
     /** Test whether this edge is less than @a e in a global order.
@@ -233,37 +246,46 @@ class Graph {
      * std::map<>. It need not have any interpretive meaning.
      */
     bool operator<(const Edge& e) const {
-      (void) e;           // Quiet compiler warning
-      return false;
+
+        return ((this->myGraph < e.myGraph)|| ((this->myGraph == e.myGraph) && ((this->first_node < e.first_node 
+                && this->second_node < e.second_node) ||
+                (this->second_node < e.first_node && this->first_node < e.second_node)))); 
+    
     }
 
    private:
     // Allow Graph to access Edge's private member data and functions.
     friend class Graph;
-    // HW0: YOUR CODE HERE
-    // Use this space to declare private data members and methods for Edge
-    // that will not be visible to users, but may be useful within Graph.
-    // i.e. Graph needs a way to construct valid Edge objects
-  };
+   
+    size_type first_node;
+    size_type second_node; 
+    graph_type *myGraph;
+
+    Edge(size_type first_node, size_type second_node, const graph_type* myGraph){
+		this->first_node = first_node;
+		this->second_node = second_node;	
+		this->myGraph = const_cast<graph_type*> (myGraph);
+	};
+
+ };
 
   /** Return the total number of edges in the graph.
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   size_type num_edges() const {
-    // HW0: YOUR CODE HERE
-    return 0;
-  }
-
+  
+	return edges.size();
+   }
   /** Return the edge with index @a i.
    * @pre 0 <= @a i < num_edges()
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   Edge edge(size_type i) const {
-    // HW0: YOUR CODE HERE
-    (void) i;             // Quiet compiler warning
-    return Edge();        // Invalid Edge
+    
+       Edge e(edges[i][0], edges[i][1], this);
+       return e;  
   }
 
   /** Test whether two nodes are connected by an edge.
@@ -273,10 +295,17 @@ class Graph {
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   bool has_edge(const Node& a, const Node& b) const {
-    // HW0: YOUR CODE HERE
-    (void) a; (void) b;   // Quiet compiler warning
+
+    Edge e(a.id, b.id, this);
+    for(size_type i = 0; i < edges.size(); i++){
+	if( (e.first_node == edges[i][0] && e.second_node == edges[i][1]) ||
+	    (e.first_node == edges[i][1] && e.second_node == edges[i][0])){
+		return true;
+	} 
+	
+    }
     return false;
-  }
+   }
 
   /** Add an edge to the graph, or return the current edge if it already exists.
    * @pre @a a and @a b are distinct valid nodes of this graph
@@ -291,9 +320,13 @@ class Graph {
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   Edge add_edge(const Node& a, const Node& b) {
-    // HW0: YOUR CODE HERE
-    (void) a, (void) b;   // Quiet compiler warning
-    return Edge();        // Invalid Edge
+  
+   Edge e(a.id, b.id, this);
+   std::array<size_type, 2> temp = {a.id, b.id};  
+   if(!has_edge(a, b)){
+	edges.push_back(temp);	
+    }
+    return e;	
   }
 
   /** Remove all nodes and edges from this graph.
@@ -302,13 +335,14 @@ class Graph {
    * Invalidates all outstanding Node and Edge objects.
    */
   void clear() {
-    // HW0: YOUR CODE HERE
+	
+    nodes.clear();
+    edges.clear();
   }
 
  private:
 
-  // HW0: YOUR CODE HERE
-  // Use this space for your Graph class's internals:
+  // this is space for your Graph class's internals:
   //   helper functions, data members, and so forth.
 
 };

@@ -128,11 +128,14 @@ public:
      * The node ordering relation must obey trichotomy: For any two nodes x
      * and y, exactly one of x == y, x < y, and y < x is true.
      */
+    //--comment
+    //--This does not preserve trichotomy
+    //--START
     bool operator<(const Node& n) const {
     
       return (this->id < n.id) && (this->myGraph < n.myGraph); 
      }
-
+    //--END
    private:
     // Allow Graph to access Node's private member data and functions.
     friend class Graph;
@@ -245,6 +248,9 @@ public:
      * This ordering function is useful for STL containers such as
      * std::map<>. It need not have any interpretive meaning.
      */
+    //--comment
+    //--This does not preserve trichotomy
+    //--START
     bool operator<(const Edge& e) const {
 
         return ((this->myGraph < e.myGraph)|| ((this->myGraph == e.myGraph) && ((this->first_node < e.first_node 
@@ -252,7 +258,7 @@ public:
                 (this->second_node < e.first_node && this->first_node < e.second_node)))); 
     
     }
-
+    //--END
    private:
     // Allow Graph to access Edge's private member data and functions.
     friend class Graph;
@@ -348,3 +354,9 @@ public:
 };
 
 #endif // CME212_GRAPH_HPP
+//--comment
+//--You can improve your choice of data structures
+//--For example, vectors and pairs are a good idea,
+//-- but don't give you O(1) addition of edges
+//--END
+//--grade9

@@ -24,13 +24,16 @@ using namespace std;
  * Users can add and retrieve nodes and edges. Edges are unique (there is at
  * most one edge between any pair of distinct nodes).
  */
+
+template <typename V>
 class Graph {
  private:
 
    /* Graph containers */
    vector<Point> nodes;
-   //vector<std::array<int,2> > edges;
-   vector<std::array<unsigned int,2> > edges;
+   vector< V > values;
+   vector<std::array<unsigned int,2> > oldEdges;
+   vector<vector<unsigned int> > edges;
  
 public:
 
@@ -45,6 +48,7 @@ public:
   class Node;
   /** Synonym for Node (following STL conventions). */
   typedef Node node_type;
+  typedef V node_value_type; 
 
   /** Predeclaration of Edge type. */
   class Edge;
@@ -92,7 +96,7 @@ public:
    *
    * Node objects are used to access information about the Graph's nodes.
    */
-  class Node {
+  class Node : private totally_ordered<Node>{
    public:
     /** Construct an invalid node.
      *
@@ -144,8 +148,7 @@ public:
      * and y, exactly one of x == y, x < y, and y < x is true.
      */
     bool operator<(const Node& n) const {
-    
-      return (this->id < n.id) && (this->myGraph < n.myGraph); 
+      return std::tie(this->myGraph, this->id) < std::tie(n.myGraph, n.id); 
      }
 
     // HW1: YOUR CODE HERE
@@ -155,27 +158,48 @@ public:
     // size_type degree() const;
     // incident_iterator edge_begin() const;
     // incident_iterator edge_end() const;
+   
+    node_value_type& value(){
+   	return myGraph->values[id]; 
+    }
 
+    const node_value_type& value() const{
+   	return myGraph->values[id]; 
+    }
+
+   size_type degree() const{
+	return myGraph->edges[this->id].size();
+    }
+   
+    incident_iterator edge_begin() const{
+	IncidentIterator i(this->id, edges[id].begin(), this->myGraph);
+	return i;
+    }	
+		
+    incident_iterator edge_end() const{
+	IncidentIterator i(this->id, edges[id].end(), this->myGraph);
+	return i;
+    }	
+ 
    private:
     // Allow Graph to access Node's private member data and functions.
     friend class Graph;
 	
     size_type id;
     graph_type *myGraph;
-
+	
     Node(size_type id, const graph_type* myGraph){
 	this->id = id;
 	this->myGraph = const_cast<graph_type*> (myGraph);
-    };
-
-   };
+     };  
+ 
+  };
 
   /** Return the number of nodes in the graph.
    *
    * Complexity: O(1).
    */
   size_type size() const {
-    
     return nodes.size(); 
   }
 
@@ -191,22 +215,27 @@ public:
    *
    * Complexity: O(1) amortized operations.
    */
-  Node add_node(const Point& position) {
-	
+
+   Node add_node(const Point& position, const node_value_type& val = node_value_type()) {
+      /* push the position and values into seperate vectors */ 
       nodes.push_back(position);
-      Node n(size()-1, this); 
+      values.push_back(val);
+     
+      /* push a temp vector when ever a node is created */	 
+      vector<unsigned int> temp;     	
+      edges.push_back(temp); 
+      //Node n(size()-1, this); 
+      Node n(num_nodes()-1, this); 
       return n; 
-
-   }
-
+   }  
+ 
   /** Determine if a Node belongs to this Graph
    * @return True if @a n is currently a Node of this Graph
    *
    * Complexity: O(1).
    */
-  bool has_node(const Node& n) const {
-  
-    return n.id < size();
+   bool has_node(const Node& n) const {
+      return n.id < size();
    }
 
   /** Return the node with index @a i.
@@ -219,7 +248,7 @@ public:
     /* return the node */
     Node n(i, this); 
     return n;
- }
+  }
 
   //
   // EDGES
@@ -231,7 +260,7 @@ public:
    * Edges are order-insensitive pairs of nodes. Two Edges with the same nodes
    * are considered equal if they connect the same nodes, in either order.
    */
-  class Edge {
+  class Edge : private totally_ordered<Edge> {
    public:
     /** Construct an invalid Edge. */
     Edge() {
@@ -260,7 +289,6 @@ public:
 	return ((((e.first_node == this->first_node) && (e.second_node == this->second_node)) || 
                 ((e.first_node == this->second_node) && (e.second_node == this->first_node))) &&
 		(e.myGraph == this->myGraph)); 
-
     }
 
     /** Test whether this edge is less than @a e in a global order.
@@ -269,7 +297,6 @@ public:
      * std::map<>. It need not have any interpretive meaning.
      */
     bool operator<(const Edge& e) const {
-
         return ((this->myGraph < e.myGraph)|| ((this->myGraph == e.myGraph) && ((this->first_node < e.first_node 
                 && this->second_node < e.second_node) ||
                 (this->second_node < e.first_node && this->first_node < e.second_node)))); 
@@ -290,25 +317,58 @@ public:
 		this->myGraph = const_cast<graph_type*> (myGraph);
 	};
 
- };
+   };
 
   /** Return the total number of edges in the graph.
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   size_type num_edges() const {
-  
-	return edges.size();
+	size_type tot_nodes = edges.size(); 
+	size_type tot_edges = 0;
+       
+        for(unsigned int i = 0; i < tot_nodes; i++){
+		tot_edges = tot_edges + edges[i].size();
+	}
+     
+	/* I am counting every edge twice in the above logic,
+	   so i half the count before i return */ 
+	tot_edges /= 2; 
+	return tot_edges;
    }
-  /** Return the edge with index @a i.
+
+ /** Return the edge with index @a i.
    * @pre 0 <= @a i < num_edges()
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
-  Edge edge(size_type i) const {
-    
-       Edge e(edges[i][0], edges[i][1], this);
-       return e;  
+ 
+ Edge edge(size_type i) const {
+       size_type count = 0;
+       size_type node1 = 0; 
+       size_type node2 = 0;
+      
+       for(size_type ni = 0; ni < edges.size(); ni++){
+	for(size_type j = 0; j < edges[ni].size(); j++){
+	 while(count <= i){
+             if((edges[ni][j] <= ni)&& (j != edges[ni].size())){
+		j++;
+             } else if(j < edges[ni].size()){
+		count += 1;
+		j++;
+	     }else if(j == edges[ni].size()){
+		j = 0;
+		ni++; 	
+             }
+	}
+	node1 = ni;
+        node2 = edges[ni][j-1];
+	break;	
+      }
+      break; 
+     }
+     Edge e(node1, node2, this);
+     return e;  
   }
 
   /** Test whether two nodes are connected by an edge.
@@ -317,20 +377,19 @@ public:
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
+ 
   bool has_edge(const Node& a, const Node& b) const {
-
     Edge e(a.id, b.id, this);
-    for(size_type i = 0; i < edges.size(); i++){
-	if( (e.first_node == edges[i][0] && e.second_node == edges[i][1]) ||
-	    (e.first_node == edges[i][1] && e.second_node == edges[i][0])){
+    size_type aDegree = edges[a.id].size();
+    for(size_type i = 0; i < aDegree; i++){
+	if(edges[a.id][i] == b.id){
 		return true;
-	} 
-	
-    }
+	}
+    } 	
     return false;
    }
-
-  /** Add an edge to the graph, or return the current edge if it already exists.
+  
+ /** Add an edge to the graph, or return the current edge if it already exists.
    * @pre @a a and @a b are distinct valid nodes of this graph
    * @return an Edge object e with e.node1() == @a a and e.node2() == @a b
    * @post has_edge(@a a, @a b) == true
@@ -342,23 +401,24 @@ public:
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
+
   Edge add_edge(const Node& a, const Node& b) {
-  
    Edge e(a.id, b.id, this);
    std::array<size_type, 2> temp = {a.id, b.id};  
    if(!has_edge(a, b)){
-	edges.push_back(temp);	
+	edges[a.id].push_back(b.id);	
+	edges[b.id].push_back(a.id);
+	oldEdges.push_back(temp);	
     }
     return e;	
   }
-
-  /** Remove all nodes and edges from this graph.
+  
+ /** Remove all nodes and edges from this graph.
    * @post num_nodes() == 0 && num_edges() == 0
    *
    * Invalidates all outstanding Node and Edge objects.
    */
   void clear() {
-	
     nodes.clear();
     edges.clear();
   }
@@ -369,7 +429,8 @@ public:
 
   /** @class Graph::NodeIterator
    * @brief Iterator class for nodes. A forward iterator. */
-  class NodeIterator {
+  //class NodeIterator: private totally_ordered<NodeIterator> {
+  class NodeIterator: private equality_comparable<NodeIterator> {
    public:
     // These type definitions help us use STL's iterator_traits.
     /** Element type. */
@@ -392,10 +453,32 @@ public:
     // Node operator*() const
     // NodeIterator& operator++()
     // bool operator==(const NodeIterator&) const
-
-   private:
+   
+   Node operator*() const{
+        Node a(this->id, this->myGraph);
+        return a;
+    }
+  
+    NodeIterator& operator++(){
+	this->id = this->id + 1;
+        return *this;
+    } 
+  
+    bool operator == (const NodeIterator& x) const{
+       return ((this->id == x.id) && (this->myGraph == x.myGraph));
+    }
+ 
+  private:
     friend class Graph;
+   
     // HW1 #2: YOUR CODE HERE
+    graph_type *myGraph;
+    size_type id;
+  
+    NodeIterator (size_type id, const graph_type* myGraph){
+	this->id = id;
+	this->myGraph = const_cast<graph_type*> (myGraph);
+     };  
   };
 
   // HW1 #2: YOUR CODE HERE
@@ -403,13 +486,23 @@ public:
   // node_iterator node_begin() const
   // node_iterator node_end() const
 
+  node_iterator node_begin() const{
+	NodeIterator a(0 , this); 
+        return a;
+  }
+
+  node_iterator node_end() const{
+        NodeIterator a(num_nodes() , this); 
+	return a;  
+  }
+ 
   //
   // Edge Iterator
   //
 
   /** @class Graph::EdgeIterator
    * @brief Iterator class for edges. A forward iterator. */
-  class EdgeIterator {
+  class EdgeIterator : private totally_ordered<EdgeIterator> {
    public:
     // These type definitions help us use STL's iterator_traits.
     /** Element type. */
@@ -433,23 +526,56 @@ public:
     // EdgeIterator& operator++()
     // bool operator==(const EdgeIterator&) const
 
+   Edge operator*() const{
+	Edge e(myGraph->oldEdges[this->id][0], myGraph->oldEdges[this->id][1], this->myGraph);
+  	return e;	 
+   }
+
+   EdgeIterator& operator++(){
+        this->id = this->id + 1;	
+        return *this;
+   }	
+
+   bool operator == (const EdgeIterator& e) const{
+       return ((this->id == e.id) && (this->myGraph == e.myGraph));
+   } 
+
    private:
     friend class Graph;
     // HW1 #3: YOUR CODE HERE
+    size_type id; 
+    graph_type *myGraph;
+    
+    EdgeIterator(size_type id, const graph_type* myGraph){
+  		this->id = id;
+		this->myGraph = const_cast<graph_type*> (myGraph);
+ 
+    };
   };
 
   // HW1 #3: YOUR CODE HERE
   // Supply definitions AND SPECIFICATIONS for:
   // edge_iterator edge_begin() const
   // edge_iterator edge_end() const
+  
+  edge_iterator edge_begin() const{
+       EdgeIterator e(0, this);
+       return e;  
+  }
 
+  edge_iterator edge_end() const{
+	size_type totEdges = oldEdges.size();
+        EdgeIterator e(totEdges, this);
+        return e;  
+  }	 
+ 
   //
   // Incident Iterator
   //
 
   /** @class Graph::IncidentIterator
    * @brief Iterator class for edges incident to a node. A forward iterator. */
-  class IncidentIterator {
+  class IncidentIterator : private totally_ordered<IncidentIterator> {
    public:
     // These type definitions help us use STL's iterator_traits.
     /** Element type. */
@@ -472,10 +598,34 @@ public:
     // Edge operator*() const
     // IncidentIterator& operator++()
     // bool operator==(const IncidentIterator&) const
+   
+   Edge operator*() const{
+	Edge e(this->firstNodeInd, edges[this->firstNodeInd][this->secondNodeInd], this->myGraph); 
+	return e;
+   }
 
+   IncidentIterator& operator++(){
+	 this->secondNodeInd = this->secondNodeInd + 1;	
+         return *this;
+   }
+
+   bool operator ==(const IncidentIterator& iit) const{
+	return ((this->firstNodeInd == iit.firstNodeInd) && (this->secondNodeInd == iit.secondNodeInd) 
+                 && (this->myGraph == iit.myGraph));
+   } 
+	
    private:
     friend class Graph;
     // HW1 #5: YOUR CODE HERE
+    graph_type *myGraph;
+    size_type firstNodeInd;
+    size_type secondNodeInd;
+  
+    IncidentIterator (size_type firstNodeInd, size_type decondNodeInd, const graph_type* myGraph){
+	this->firstNodeInd = firstNodeInd;
+	this->secondNodeInd = secondNodeInd;
+	this->myGraph = const_cast<graph_type*> (myGraph);
+     };  
   };
 
  private:

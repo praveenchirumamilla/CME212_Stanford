@@ -150,9 +150,28 @@ int main(int argc, char** argv)
   // HW1 #4: YOUR CODE HERE
   // Use shortest_path_lengths to set the node values to the path lengths
   // Construct a Color functor and view with the SDLViewer
+  unsigned int maxDist = shortest_path_lengths(graph, Point(-1, 0, 1));
+  
+  /* color */
+  class colorClass{
+	
+     public:
+	colorClass(unsigned int maxDist):maxDist(maxDist){
+	}
+
+        CME212::Color operator()(Graph<int>::Node n){
+	  if(n.value() != -1){
+                return CME212::Color::make_rgb(0.5, 1, 0.7);
+	   }else{
+ 		return CME212::Color::make_rgb(1,1,1);
+           }
+	}
+      private:
+	unsigned int maxDist;
+     };
+ 
   auto node_map = viewer.empty_node_map(graph);
-  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
-  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  viewer.add_nodes(graph.node_begin(), graph.node_end(), colorClass(maxDist), node_map);
   viewer.center_view();
   
   return 0;

@@ -172,14 +172,16 @@ public:
    
    /** Return an incident_iterator for the first edge from this node. */
    incident_iterator edge_begin() const{
-	IncidentIterator i(this->id, edges[id].begin(), this->myGraph);
+	//IncidentIterator i(this->id, edges[id].begin(), this->myGraph);
+        IncidentIterator i(this->id, 0, this->myGraph);
 	return i;
    }	
 
-   /** Return an incident_iterator for the first edge from this node. */
+   /** Return an incident_iterator for the last edge from this node. */
    incident_iterator edge_end() const{
-	IncidentIterator i(this->id, edges[id].end(), this->myGraph);
-	return i;
+	//IncidentIterator i(this->id, edges[id].end(), this->myGraph);
+	IncidentIterator i(this->id, myGraph->edges[id].size(), this->myGraph);
+        return i;
    }	
  
    private:
@@ -586,7 +588,7 @@ public:
 
     /** Returns instance of an edge with this iterator's index */
     Edge operator*() const{
-	Edge e(this->firstNodeInd, edges[this->firstNodeInd][this->secondNodeInd], this->myGraph); 
+	Edge e(this->firstNodeInd, myGraph->edges[this->firstNodeInd][this->secondNodeInd], this->myGraph); 
 	return e;
     }
 

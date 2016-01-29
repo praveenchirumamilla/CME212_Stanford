@@ -67,14 +67,46 @@ struct MyComparator {
  */
 int shortest_path_lengths(Graph<int>& g, const Point& point) {
   // HW1 #4: YOUR CODE HERE
-  (void) g, (void) point;
+  //(void) g, (void) point;
 
   /* find a nearest node to the point */
-  MyComparator mc(point);
+  //MyComparator mc(point);
   
+  unsigned int maxDistance = 0;
+  std::queue<Point::size_type> nodeQueue;
+  std::vector<bool> visited(g.size(), false);
 
-  
-  return 0;
+  /* Node iterator for nearest node to the point */
+  Graph<int>::node_iterator it = std::min_element(g.node_begin(), g.node_end(), MyComparator(point));
+
+  /* to start with set values of all nodes to -1:
+       i). for root node set val to 0 & visited state. */
+  for(Graph<int>::node_iterator temp = g.node_begin(); temp != g.node_end(); ++temp){
+	(*temp).value() = -1;
+     }
+     (*it).value() = 0;
+     visited[(*it).index()] = true;
+
+  /* BFS Algortithm */
+  nodeQueue.push((*it).index());
+  while(!nodeQueue.empty()){
+	Point::size_type id = nodeQueue.front();
+        nodeQueue.pop();
+
+        /* iterate edges from this origin node */
+        for(Graph<int>::incident_iterator iit = g.node(id).edge_begin(); iit != g.node(id).edge_end(); ++iit){
+	      Point::size_type nextId = (*iit).node2().index();
+              if(!visited[nextId]){
+			/* adjust the value of next node */
+                        visited[nextId] = true;
+			g.node(nextId).value() = g.node(nextId).value()+1;
+	                maxDistance = g.node(nextId).value();
+
+			nodeQueue.push(nextId);
+               }
+             }
+          }
+          return maxDistance;
 }
 
 

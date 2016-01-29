@@ -29,7 +29,10 @@ template <typename V>
 class Graph {
  private:
 
-   /* Graph containers */
+   /* Graph containers:
+	i). I am using two individual vectors for storing nodes & values.
+       ii). I implemented edges as both adjacency as well as vector of pairs.
+      iii). I used Edge implementation with vector of pairs for implementing edge iterator. */
    vector<Point> nodes;
    vector< V > values;
    vector<std::array<unsigned int,2> > oldEdges;
@@ -119,22 +122,20 @@ public:
 
     /** Return this node's position. */
     const Point& position() const {
-	/* return the point */
-	return myGraph->nodes[id]; 	 
+       /* return the point */
+       return myGraph->nodes[id]; 	 
     }
 
     /** Return this node's index, a number in the range [0, graph_size). */
     size_type index() const {
-    
       return this->id;
-   }
+    }
 
     /** Test whether this node and @a n are equal.
      *
      * Equal nodes have the same graph and the same index.
      */
     bool operator==(const Node& n) const {
-      
       return (this->id == n.id) && (this->myGraph == n.myGraph); 
     }
 
@@ -151,35 +152,35 @@ public:
       return std::tie(this->myGraph, this->id) < std::tie(n.myGraph, n.id); 
      }
 
-    // HW1: YOUR CODE HERE
-    // Supply definitions AND SPECIFICATIONS for:
-    // node_value_type& value();
-    // const node_value_type& value() const;
-    // size_type degree() const;
-    // incident_iterator edge_begin() const;
-    // incident_iterator edge_end() const;
-   
+    /** Return this node's value. */
     node_value_type& value(){
    	return myGraph->values[id]; 
     }
 
+    /** Return this node's value.
+      *
+      * Just a duplicate constant function
+      */
     const node_value_type& value() const{
    	return myGraph->values[id]; 
     }
 
-   size_type degree() const{
+    /** Return this node's degree. */
+    size_type degree() const{
 	return myGraph->edges[this->id].size();
     }
    
-    incident_iterator edge_begin() const{
+   /** Return an incident_iterator for the first edge from this node. */
+   incident_iterator edge_begin() const{
 	IncidentIterator i(this->id, edges[id].begin(), this->myGraph);
 	return i;
-    }	
-		
-    incident_iterator edge_end() const{
+   }	
+
+   /** Return an incident_iterator for the first edge from this node. */
+   incident_iterator edge_end() const{
 	IncidentIterator i(this->id, edges[id].end(), this->myGraph);
 	return i;
-    }	
+   }	
  
    private:
     // Allow Graph to access Node's private member data and functions.
@@ -188,6 +189,7 @@ public:
     size_type id;
     graph_type *myGraph;
 	
+    /** private constructor for node. */
     Node(size_type id, const graph_type* myGraph){
 	this->id = id;
 	this->myGraph = const_cast<graph_type*> (myGraph);
@@ -223,8 +225,7 @@ public:
      
       /* push a temp vector when ever a node is created */	 
       vector<unsigned int> temp;     	
-      edges.push_back(temp); 
-      //Node n(size()-1, this); 
+      edges.push_back(temp);  
       Node n(num_nodes()-1, this); 
       return n; 
    }  
@@ -245,7 +246,6 @@ public:
    * Complexity: O(1).
    */
   Node node(size_type i) const {
-    /* return the node */
     Node n(i, this); 
     return n;
   }
@@ -285,9 +285,8 @@ public:
      * Equal edges represent the same undirected edge between two nodes.
      */
     bool operator==(const Edge& e) const {
-      
-	return ((((e.first_node == this->first_node) && (e.second_node == this->second_node)) || 
-                ((e.first_node == this->second_node) && (e.second_node == this->first_node))) &&
+      return ((((e.first_node == this->first_node) && (e.second_node == this->second_node)) || 
+               ((e.first_node == this->second_node) && (e.second_node == this->first_node))) &&
 		(e.myGraph == this->myGraph)); 
     }
 
@@ -311,6 +310,7 @@ public:
     size_type second_node; 
     graph_type *myGraph;
 
+    /** private constructor for edge. */
     Edge(size_type first_node, size_type second_node, const graph_type* myGraph){
 		this->first_node = first_node;
 		this->second_node = second_node;	
@@ -337,17 +337,17 @@ public:
 	return tot_edges;
    }
 
- /** Return the edge with index @a i.
-   * @pre 0 <= @a i < num_edges()
-   *
-   * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
-   */
- 
- Edge edge(size_type i) const {
+  /** Return the edge with index @a i.
+    * @pre 0 <= @a i < num_edges()
+    *
+    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
+    */
+  Edge edge(size_type i) const {
        size_type count = 0;
        size_type node1 = 0; 
        size_type node2 = 0;
-      
+    
+       /* find the vector indices for ith edge */  
        for(size_type ni = 0; ni < edges.size(); ni++){
 	for(size_type j = 0; j < edges[ni].size(); j++){
 	 while(count <= i){
@@ -377,7 +377,6 @@ public:
    *
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
- 
   bool has_edge(const Node& a, const Node& b) const {
     Edge e(a.id, b.id, this);
     size_type aDegree = edges[a.id].size();
@@ -408,6 +407,8 @@ public:
    if(!has_edge(a, b)){
 	edges[a.id].push_back(b.id);	
 	edges[b.id].push_back(a.id);
+
+	/* Here i am also maintaining the vector of pairs for edge iterator. */
 	oldEdges.push_back(temp);	
     }
     return e;	
@@ -429,7 +430,6 @@ public:
 
   /** @class Graph::NodeIterator
    * @brief Iterator class for nodes. A forward iterator. */
-  //class NodeIterator: private totally_ordered<NodeIterator> {
   class NodeIterator: private equality_comparable<NodeIterator> {
    public:
     // These type definitions help us use STL's iterator_traits.
@@ -448,22 +448,20 @@ public:
     NodeIterator() {
     }
 
-    // HW1 #2: YOUR CODE HERE
-    // Supply definitions AND SPECIFICATIONS for:
-    // Node operator*() const
-    // NodeIterator& operator++()
-    // bool operator==(const NodeIterator&) const
-   
+    
+   /** Returns a node instance for this index. */
    Node operator*() const{
         Node a(this->id, this->myGraph);
         return a;
     }
   
+    /** Increments the iterator's index by one. */
     NodeIterator& operator++(){
 	this->id = this->id + 1;
         return *this;
     } 
-  
+ 
+    /** Checks two iterators for equality. */ 
     bool operator == (const NodeIterator& x) const{
        return ((this->id == x.id) && (this->myGraph == x.myGraph));
     }
@@ -475,22 +473,20 @@ public:
     graph_type *myGraph;
     size_type id;
   
+    /** private constructor for node iterator. */
     NodeIterator (size_type id, const graph_type* myGraph){
 	this->id = id;
 	this->myGraph = const_cast<graph_type*> (myGraph);
      };  
   };
 
-  // HW1 #2: YOUR CODE HERE
-  // Supply definitions AND SPECIFICATIONS for:
-  // node_iterator node_begin() const
-  // node_iterator node_end() const
-
+  /** Returns the starting index for node iterator */
   node_iterator node_begin() const{
 	NodeIterator a(0 , this); 
         return a;
   }
 
+  /** Returns the end index for node iterator */
   node_iterator node_end() const{
         NodeIterator a(num_nodes() , this); 
 	return a;  
@@ -520,25 +516,22 @@ public:
     EdgeIterator() {
     }
 
-    // HW1 #3: YOUR CODE HERE
-    // Supply definitions AND SPECIFICATIONS for:
-    // Edge operator*() const
-    // EdgeIterator& operator++()
-    // bool operator==(const EdgeIterator&) const
-
-   Edge operator*() const{
+    /** Returns an edge instance with this iterator's index */
+    Edge operator*() const{
 	Edge e(myGraph->oldEdges[this->id][0], myGraph->oldEdges[this->id][1], this->myGraph);
   	return e;	 
-   }
-
-   EdgeIterator& operator++(){
+    }
+    
+    /** Increments the edge iterator's index by 1 */
+    EdgeIterator& operator++(){
         this->id = this->id + 1;	
         return *this;
-   }	
+    }	
 
-   bool operator == (const EdgeIterator& e) const{
+    /** Checks two edge iterators for equality. */
+    bool operator == (const EdgeIterator& e) const{
        return ((this->id == e.id) && (this->myGraph == e.myGraph));
-   } 
+    } 
 
    private:
     friend class Graph;
@@ -546,6 +539,7 @@ public:
     size_type id; 
     graph_type *myGraph;
     
+    /** private constructor for edge iterator. */
     EdgeIterator(size_type id, const graph_type* myGraph){
   		this->id = id;
 		this->myGraph = const_cast<graph_type*> (myGraph);
@@ -553,16 +547,13 @@ public:
     };
   };
 
-  // HW1 #3: YOUR CODE HERE
-  // Supply definitions AND SPECIFICATIONS for:
-  // edge_iterator edge_begin() const
-  // edge_iterator edge_end() const
-  
+  /** Returns the starting edge iterator instance */
   edge_iterator edge_begin() const{
        EdgeIterator e(0, this);
        return e;  
   }
 
+  /** Returns the ending edge iterator instance */
   edge_iterator edge_end() const{
 	size_type totEdges = oldEdges.size();
         EdgeIterator e(totEdges, this);
@@ -593,22 +584,19 @@ public:
     IncidentIterator() {
     }
 
-    // HW1 #5: YOUR CODE HERE
-    // Supply definitions AND SPECIFICATIONS for:
-    // Edge operator*() const
-    // IncidentIterator& operator++()
-    // bool operator==(const IncidentIterator&) const
-   
-   Edge operator*() const{
+    /** Returns instance of an edge with this iterator's index */
+    Edge operator*() const{
 	Edge e(this->firstNodeInd, edges[this->firstNodeInd][this->secondNodeInd], this->myGraph); 
 	return e;
-   }
+    }
 
-   IncidentIterator& operator++(){
+    /** Increments incident iterator's index by one */
+    IncidentIterator& operator++(){
 	 this->secondNodeInd = this->secondNodeInd + 1;	
          return *this;
-   }
+    }
 
+   /** Checks two incident iterators for equality */
    bool operator ==(const IncidentIterator& iit) const{
 	return ((this->firstNodeInd == iit.firstNodeInd) && (this->secondNodeInd == iit.secondNodeInd) 
                  && (this->myGraph == iit.myGraph));
@@ -621,6 +609,7 @@ public:
     size_type firstNodeInd;
     size_type secondNodeInd;
   
+    /** Private constructor for incident iterator */
     IncidentIterator (size_type firstNodeInd, size_type decondNodeInd, const graph_type* myGraph){
 	this->firstNodeInd = firstNodeInd;
 	this->secondNodeInd = secondNodeInd;

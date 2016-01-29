@@ -1,6 +1,4 @@
-/**
- * @file viewer.cpp
- * Test script for the SDLViewer and Graph
+/* Test script for the SDLViewer and Graph
  *
  * @brief Reads in two files specified on the command line.
  * First file: 3D Points (one per line) defined by three doubles
@@ -20,7 +18,6 @@
 
 #include "Graph.hpp"
 
-
 int main(int argc, char** argv)
 {
   // Check arguments
@@ -30,8 +27,8 @@ int main(int argc, char** argv)
   }
 
   // Construct a Graph
-  Graph graph;
-  std::vector<typename Graph::node_type> nodes;
+  Graph<double> graph;
+  std::vector<typename Graph<double>::node_type> nodes;
 
   // Create a nodes_file from the first input argument
   std::ifstream nodes_file(argv[1]);
@@ -52,14 +49,21 @@ int main(int argc, char** argv)
   // Print number of nodes and edges
   std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
 
+
   // Launch a viewer
   CME212::SDLViewer viewer;
   viewer.launch();
 
+  // add nodes using iterator
+  auto node_map = viewer.empty_node_map(graph);
+  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map); 
+  viewer.center_view(); 
+  
   // Set the viewer
-  viewer.draw_graph_nodes(graph);
-  viewer.draw_graph(graph);
-  viewer.center_view();
+  //viewer.draw_graph_nodes(graph);
+  //viewer.draw_graph(graph);
+  //viewer.center_view();
 
   return 0;
 }

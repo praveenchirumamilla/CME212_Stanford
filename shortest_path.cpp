@@ -25,10 +25,14 @@ struct MyComparator {
    MyComparator(const Point& p) : p_(p) {
    };
 
+   /* Returns true if node1 is closer to p_ than node2. */
    template <typename NODE>
    bool operator()(const NODE& node1, const NODE& node2) const {
-    (void) node1; (void) node2;    // Quiet compiler warning
-    return false;
+    if(std::distance(p_, node1.position()) < std::distance(p_, node2.position())){
+	return true;
+    }else{
+   	return false;
+    }
   }
 };
 
@@ -51,6 +55,10 @@ struct MyComparator {
 int shortest_path_lengths(Graph<int>& g, const Point& point) {
   // HW1 #4: YOUR CODE HERE
   (void) g, (void) point;
+
+  /* find a nearest node to the point */
+  MyComparator mc(point);
+  
   return 0;
 }
 
@@ -95,5 +103,10 @@ int main(int argc, char** argv)
   // HW1 #4: YOUR CODE HERE
   // Use shortest_path_lengths to set the node values to the path lengths
   // Construct a Color functor and view with the SDLViewer
+  auto node_map = viewer.empty_node_map(graph);
+  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  viewer.center_view();
+  
   return 0;
 }

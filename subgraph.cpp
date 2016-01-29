@@ -42,11 +42,37 @@ class filter_iterator
     // HW1 #4: YOUR CODE HERE
   }
 
-  // HW1 #4: YOUR CODE HERE
-  // Supply definitions AND SPECIFICATIONS for:
-  // value_type operator*() const;
-  // self_type& operator++();
-  // bool operator==(const self_type&) const;
+  /** Returns original instance of a particular iterator type 
+    */ 
+  value_type operator*() const{
+	return *it_;
+  }
+  
+  /** Increments the current iterator to the next.
+    */ 
+  self_type& operator++() {	
+     it_ = ++it_;
+     while (!p_(*it_) && it_ != end_) it_ = ++it_;
+     return *this;
+  }
+
+  /** Checks if two iterators for equality 
+    */ 
+  bool operator==(const self_type& other) const {
+     return it_ == other.it_ && end_ == other.end_;	
+  }
+
+  /** Returns the starting value of iterator
+    */ 
+  const It begin() const {
+     return it_;
+  }
+
+  /** Returns the ending value of iterator
+    */
+  const It end() const {
+        return end_;
+  }
 
  private:
   Pred p_;
@@ -76,7 +102,20 @@ filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
 struct SlicePredicate {
   template <typename NODE>
   bool operator()(const NODE& n) {
-    return n.position().x < 0;
+		return n.position().x < 0;
+  }
+};
+
+/** predicate for selecting nodes in a cube of length .7 
+  *
+  * returns true if a node falls with in the cube of size 0.7 
+  */ 
+struct cubePredicate {
+  template <typename NODE>
+  bool operator()(const NODE& n) {
+		return (n.position().x < .35 && n.position().x > -.35
+		     && n.position().y < .35 && n.position().y > -.35
+		     && n.position().z < .35 && n.position().z > -.35);
   }
 };
 
@@ -119,6 +158,22 @@ int main(int argc, char** argv)
 
   // HW1 #4: YOUR CODE HERE
   // Use the filter_iterator to plot an induced subgraph.
+  
+  /* Uncomments the following 3 lines to test the given predicate for half graph */
+  //SlicePredicate sp;
+  //auto it_begin = make_filtered<SlicePredicate, Graph<int>::NodeIterator>(graph.node_begin(), graph.node_end(), sp);
+  //auto it_end = make_filtered<SlicePredicate, Graph<int>::NodeIterator>(graph.node_end(), graph.node_end(), sp);
+  
+  /* Currently executing the predicate i implemented */
+  cubePredicate cp;
+  auto it_begin = make_filtered<cubePredicate, Graph<int>::NodeIterator>(graph.node_begin(), graph.node_end(), cp);
+  auto it_end = make_filtered<cubePredicate, Graph<int>::NodeIterator>(graph.node_end(), graph.node_end(), cp);
+  
+  auto node_map = viewer.empty_node_map(graph);
+  viewer.add_nodes(it_begin, it_end, node_map);
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  viewer.center_view();
 
   return 0;
 }
+

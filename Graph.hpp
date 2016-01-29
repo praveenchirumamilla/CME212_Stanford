@@ -610,7 +610,7 @@ public:
     size_type secondNodeInd;
   
     /** Private constructor for incident iterator */
-    IncidentIterator (size_type firstNodeInd, size_type decondNodeInd, const graph_type* myGraph){
+    IncidentIterator (size_type firstNodeInd, size_type secondNodeInd, const graph_type* myGraph){
 	this->firstNodeInd = firstNodeInd;
 	this->secondNodeInd = secondNodeInd;
 	this->myGraph = const_cast<graph_type*> (myGraph);

@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <fstream>
+#include <queue>
 
 #include "CME212/SDLViewer.hpp"
 #include "CME212/Util.hpp"
@@ -28,11 +29,23 @@ struct MyComparator {
    /* Returns true if node1 is closer to p_ than node2. */
    template <typename NODE>
    bool operator()(const NODE& node1, const NODE& node2) const {
-    if(std::distance(p_, node1.position()) < std::distance(p_, node2.position())){
+    /*if(std::distance(p_, node1.position()) < std::distance(p_, node2.position())){
 	return true;
     }else{
    	return false;
-    }
+    } */
+
+    double dist1 = 0, dist2 = 0;
+    
+    dist1 =((node1.position().x - p_.x) * (node1.position().x - p_.x) +
+            (node1.position().y - p_.y) * (node1.position().y - p_.y) +
+ 	    (node1.position().z - p_.z) * (node1.position().z - p_.z));
+
+    dist2 =((node1.position().x - p_.x) * (node1.position().x - p_.x) +
+            (node1.position().y - p_.y) * (node1.position().y - p_.y) +
+ 	    (node1.position().z - p_.z) * (node1.position().z - p_.z));
+
+    return dist1 < dist2;
   }
 };
 
@@ -58,6 +71,8 @@ int shortest_path_lengths(Graph<int>& g, const Point& point) {
 
   /* find a nearest node to the point */
   MyComparator mc(point);
+  
+
   
   return 0;
 }

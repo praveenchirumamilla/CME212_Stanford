@@ -7,6 +7,9 @@
 EXEC += viewer
 EXEC += subgraph
 EXEC += shortest_path
+EXEC += mass_spring
+EXEC += test_nodes
+EXEC += test_edges
 
 # Get the shell name to determine the OS
 UNAME := $(shell uname)

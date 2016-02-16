@@ -40,6 +40,20 @@ typedef typename GraphType::node_type Node;
 typedef typename GraphType::edge_type Edge;
 
 
+/* plane constraint */
+struct planeConstraint{
+
+  void operator()(GraphType& g, double){
+    for(auto it = g.node_begin(); it != g.node_end(); ++it)
+    {
+	Node n = (*it);
+	if(dot(n.position(), Point(0, 0, 1)) < -0.75){
+	  n.position().elem[2] = -0.75;
+	  n.value().vel.elem[2] = 0;
+  	}
+     }
+   }
+};
 
 /* sphere constraint */
 struct sphereConstraint{
@@ -59,23 +73,7 @@ struct sphereConstraint{
     }   
 };
 
-/* plane constraint */
-struct planeConstraint{
-
-  void operator()(GraphType& g, double){
-    for(auto it = g.node_begin(); it != g.node_end(); ++it)
-    {
-	Node n = (*it);
-	if(dot(n.position(), Point(0, 0, 1)) < -0.75){
-	  n.position().elem[2] = -0.75;
-	  n.value().vel.elem[2] = 0;
-  	}
-     }
-   }
-};
-
 /* remove sphere constraint */
-
 struct removeSphereConstraint{
 
    Point c = Point(0.5, 0.5, -0.5);
@@ -127,8 +125,8 @@ combineTwoConstraints<C1, C2> totalConstraint(C1 c1 = C1(), C2 c2 = C2()){
 template <typename G, typename F>
 double symp_euler_step(G& g, double t, double dt, F force) {
 
-   /* I am getting an error with planeconstraint which i cannot able to resolve at this time */
-  //auto tempConstraint = totalConstraint(removeSphereConstraint(), PlaneConstraint());
+  /* sum of two constraints */
+  auto tempConstraint = totalConstraint(removeSphereConstraint(), planeConstraint());
   
   // Compute the t+dt position
   for (auto it = g.node_begin(); it != g.node_end(); ++it) {
@@ -150,7 +148,7 @@ double symp_euler_step(G& g, double t, double dt, F force) {
   
 
   // Compute the t+dt velocity
-  //tempConstraint(g, 0);
+  tempConstraint(g, 0);
   for (auto it = g.node_begin(); it != g.node_end(); ++it) {
     auto n = *it;
     // v^{n+1} = v^{n} + F(x^{n+1},t) * dt / m
@@ -185,7 +183,7 @@ struct Problem1Force {
     for(auto it = n.edge_begin(); it != n.edge_end(); ++it){
 	Edge e = *it;
 	spring += (e.value().K*(e.node2().position() - e.node1().position())/e.length())*(e.length()- e.value().L); 
-        //spring += (100*(e.node2().position() - e.node1().position())/e.length()*(e.length()- .1)); 
+        //spring += (100*(e.node2().position() - e.node1().position())/e.length()*(e.length()- 100)); //Q1
     }
 
     (void) t;     // silence compiler warnings

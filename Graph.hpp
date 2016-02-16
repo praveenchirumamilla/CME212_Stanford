@@ -5,6 +5,7 @@
  * @brief An undirected graph type
  */
 
+#include <iostream>
 #include <algorithm>
 #include <vector>
 #include <cassert>
@@ -25,7 +26,7 @@ using namespace std;
  * most one edge between any pair of distinct nodes).
  */
 
-template <typename V>
+template <typename V, typename E = char>
 class Graph {
  private:
 
@@ -36,6 +37,7 @@ class Graph {
    vector<Point> nodes;
    vector< V > values;
    vector<std::array<unsigned int,2> > oldEdges;
+   vector< E > edgeValues;
    vector<vector<unsigned int> > edges;
  
 public:
@@ -57,6 +59,7 @@ public:
   class Edge;
   /** Synonym for Edge (following STL conventions). */
   typedef Edge edge_type;
+  typedef E edge_value_type; 
 
   /** Type of node iterators, which iterate over all graph nodes. */
   class NodeIterator;
@@ -126,6 +129,12 @@ public:
        return myGraph->nodes[id]; 	 
     }
 
+    /** Return this node's position. */
+    Point& position() {
+       /* return the point */
+       return myGraph->nodes[id]; 	 
+    }
+    
     /** Return this node's index, a number in the range [0, graph_size). */
     size_type index() const {
       return this->id;
@@ -232,6 +241,54 @@ public:
       return n; 
    }  
  
+ /** remove a node from the graph, returning the added node.
+   * @param[in] n Node to to be removed
+   * @result 1 if has_node(n) else 0
+   * @post new num_nodes() == old num_nodes() - result
+   *
+   * Complexity: linear in size() + degree of node n.
+   */
+   size_type remove_node(const Node& n){
+  	if(!has_node(n))
+		return 0;
+
+	/* Clean adjacency list : first traverse through all adjacent nodes */
+	//for(size_type i : edges[n.id].size()){
+	for(size_type i = 0; i < edges[n.id].size(); i++){
+		if(edges[n.id][i] != n.id){
+			size_type adj_id = edges[n.id][i];
+			
+			/* first remove n.id from neighbours list of other nodes */
+			//for(size_type j : edges[adj_id].size()){
+			for(size_type j = 0; j < edges[adj_id].size(); j++){
+				if(edges[adj_id][j] == n.id){
+					edges[adj_id].erase(edges[adj_id].begin()+j);
+				}
+			}
+		}
+	}
+
+        /* remove entry for node n in adjacency list */
+	edges.erase(edges.begin()+n.id);
+	nodes.erase(nodes.begin()+n.id);
+	values.erase(values.begin()+n.id);
+
+        /* remove edges from old edges entry as well */
+	//for(size_type k : oldEdges.size()){
+	for(size_type k = 0; k < oldEdges.size(); k++){
+		if(oldEdges[k][0] == n.id or oldEdges[k][1] == n.id){
+			oldEdges.erase(oldEdges.begin()+k);
+		}
+	}
+
+	return 1;
+   }
+
+  node_iterator remove_node(node_iterator n_it){
+	remove_node(*n_it);
+	return n_it;
+  }
+
   /** Determine if a Node belongs to this Graph
    * @return True if @a n is currently a Node of this Graph
    *
@@ -282,6 +339,23 @@ public:
       return n;      
     }
 
+    double length() const{ 
+ 	Point dist = node1().position() - node2().position();
+	return norm(dist);
+    }
+
+    edge_value_type& value(){ 
+       return myGraph->edgeValues[id];
+    }
+    
+    const edge_value_type& value() const{
+       return myGraph->edgeValues[id];
+    }
+
+    size_type edge_index() const{
+	return id;
+    }
+ 
     /** Test whether this edge and @a e are equal.
      *
      * Equal edges represent the same undirected edge between two nodes.
@@ -308,6 +382,7 @@ public:
     // Allow Graph to access Edge's private member data and functions.
     friend class Graph;
    
+    size_type id;
     size_type first_node;
     size_type second_node; 
     graph_type *myGraph;
@@ -326,17 +401,28 @@ public:
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
   size_type num_edges() const {
-	size_type tot_nodes = edges.size(); 
+       /*	size_type tot_nodes = edges.size(); 
 	size_type tot_edges = 0;
        
         for(unsigned int i = 0; i < tot_nodes; i++){
 		tot_edges = tot_edges + edges[i].size();
-	}
+	} */
      
 	/* I am counting every edge twice in the above logic,
 	   so i half the count before i return */ 
-	tot_edges /= 2; 
-	return tot_edges;
+	/*tot_edges /= 2; 
+	return tot_edges;  */
+
+    //My original logic above has some bug, i need to fix it later
+    size_type count_edges = 0;
+    for (unsigned k = 0; k < num_nodes(); ++k) {
+     for (unsigned j = k+1; j < num_nodes(); ++j) {
+      if (has_edge(node(k), node(j)))
+        ++count_edges;
+      }
+    }
+
+    return count_edges;
    }
 
   /** Return the edge with index @a i.
@@ -403,7 +489,7 @@ public:
    * Complexity: No more than O(num_nodes() + num_edges()), hopefully less
    */
 
-  Edge add_edge(const Node& a, const Node& b) {
+  Edge add_edge(const Node& a, const Node& b, const edge_value_type& val = edge_value_type()) {
    Edge e(a.id, b.id, this);
    std::array<size_type, 2> temp = {a.id, b.id};  
    if(!has_edge(a, b)){
@@ -411,11 +497,91 @@ public:
 	edges[b.id].push_back(a.id);
 
 	/* Here i am also maintaining the vector of pairs for edge iterator. */
-	oldEdges.push_back(temp);	
+	oldEdges.push_back(temp);
+	edgeValues.push_back(val);	
     }
     return e;	
   }
   
+ /** Remove an edge to the graph, or return 0 if it doesnt exists.
+   * @pre @a a and @a b are distinct valid nodes of this graph
+   * @return 1 if has_edge(a, b) else returns 0
+   * @post If old has_edge(@a a, @a b), new num_edges() == old num_edges() - 1
+   *       Else,                        new num_edges() == old num_edges() 
+   *
+   *
+   * Complexity: No more than degree(), hopefully less
+   */
+  size_type remove_edge(const Node& n1, const Node& n2){
+	if(!has_edge(n1, n2))
+		return 0;
+
+	size_type id1 = n1.id;
+	size_type id2 = n2.id;
+	size_type node_ind = 0;
+	
+        /* remove n2 from adjacency list of n1 */
+	while(edges[id1][node_ind] != id2)
+		++node_ind;
+        edges[id1].erase(edges[id1].begin()+node_ind);
+
+        /* remove n1 from adjacency list of n2 */
+	node_ind = 0;
+	while(edges[id2][node_ind] != id1)
+		++node_ind;
+        edges[id2].erase(edges[id2].begin()+node_ind);
+
+	/* also remove edge from old data structure */
+	for(size_type k = 0; k < oldEdges.size(); k++){
+		if((oldEdges[k][0] == id1 and oldEdges[k][1] == id2) and (oldEdges[k][0] == id2 and oldEdges[k][1] == id1)){
+			oldEdges.erase(oldEdges.begin()+k);
+			edgeValues.erase(edgeValues.begin()+k);
+		}
+	}
+	
+        return 1;
+   }
+
+ /** Remove an edge from the graph, or return 0 if it doesnt exists.
+   * @param[in] e is an edge to be removed
+   * @return 1 if has_edge(e.node1(), e.node2()) else returns 0
+   * @post If old has_edge(@a e.node1(), @a e.node2()), new num_edges() == old num_edges() - 1
+   *       Else,                        new num_edges() == old num_edges() 
+   *
+   *
+   * Complexity: No more than degree(), hopefully less
+   */
+  size_type remove_edge(const Edge& e){
+	return remove_edge(e.node1(), e.node2());
+  }
+
+  /** Remove an edge from the graph, or return 0 if it doesnt exists.
+   * @param[in] it is an edge iterator that points to an edge to be removed
+   * @return iterator for next edge if edge remonal is success else returns the same iterator.
+   * @post new num_edges() = old num_edges() -1 if removal is success.
+   *                  else = old num_edges()
+   *
+   * Complexity: No more than degree(), hopefully less
+   */
+  edge_iterator remove_edge(edge_iterator it){
+
+	/* check node indices in adj list for later 
+	   returning appropriate iterator. */
+        size_type id1 = (*it).node1().id;
+	size_type id2 = (*it).node2().id;
+	size_type node_ind = 0;
+    
+        while(edges[id1][node_ind] != id2)
+		++node_ind;
+        remove_edge(*it);
+
+        if(node_ind < edges[id1].size()){
+		return it;
+  	}else{
+		return ++it;
+	}
+  }
+
  /** Remove all nodes and edges from this graph.
    * @post num_nodes() == 0 && num_edges() == 0
    *
@@ -424,6 +590,9 @@ public:
   void clear() {
     nodes.clear();
     edges.clear();
+    oldEdges.clear();
+    values.clear();
+    edgeValues.clear();
   }
 
   //
@@ -493,6 +662,7 @@ public:
         NodeIterator a(num_nodes() , this); 
 	return a;  
   }
+
  
   //
   // Edge Iterator

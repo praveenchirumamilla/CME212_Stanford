@@ -13,6 +13,7 @@ EXEC += trivial_copy
 EXEC += distance_dispatch
 EXEC += expr_template
 EXEC += openmp
+EXEC += bench_std
 
 # Get the shell name to determine the OS
 UNAME := $(shell uname)

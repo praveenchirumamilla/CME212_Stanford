@@ -636,7 +636,7 @@ public:
     bool operator == (const NodeIterator& x) const{
        return ((this->id == x.id) && (this->myGraph == x.myGraph));
     }
- 
+    
   private:
     friend class Graph;
    

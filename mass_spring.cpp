@@ -81,7 +81,7 @@ struct removeSphereConstraint{
    void operator()(GraphType& g, double){
    auto it = g.node_begin();
    while(it != g.node_end()){
-	if(norm((*it).position() - c) < r){
+         if(normSq((*it).position() - c) < r){
 	  it = g.remove_node(it);
 	}else{
 	  ++it;

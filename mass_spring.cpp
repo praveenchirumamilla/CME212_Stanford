@@ -126,12 +126,20 @@ template <typename G, typename F>
 double symp_euler_step(G& g, double t, double dt, F force) {
 
   /* sum of two constraints */
-  auto tempConstraint = totalConstraint(removeSphereConstraint(), planeConstraint());
+  //--comment
+  //--You really shouldn't be creating your constraint object inside this function.
+  //--You should create it outside and pass it in as an additional argument.
+  //--START
+  //auto tempConstraint = totalConstraint(removeSphereConstraint(), planeConstraint());
+  //--END
   
   // Compute the t+dt position
   for (auto it = g.node_begin(); it != g.node_end(); ++it) {
     auto n = *it;
 
+    //--comment
+    //--You should make this into another type of contraint rather than hard code it.
+    //--START
     if(n.position() != Point(0,0,0) && n.position() != Point(1, 0, 0)){
 
       // Update the position of the node according to its velocity
@@ -144,11 +152,12 @@ double symp_euler_step(G& g, double t, double dt, F force) {
       // set its velocity as 0
       n.value().vel = Point(0, 0, 0);
     }
+    //--END
   }
   
 
   // Compute the t+dt velocity
-  tempConstraint(g, 0);
+  //tempConstraint(g, 0);
   for (auto it = g.node_begin(); it != g.node_end(); ++it) {
     auto n = *it;
     // v^{n+1} = v^{n} + F(x^{n+1},t) * dt / m
@@ -223,11 +232,16 @@ struct DampingForce
 {
    template <typename NODE>
    Point operator()(NODE n, double t){
-	return (-(c*n.value().vel));
+	//return (-(c*n.value().vel));
+	return (-(c*n.value().mass) * n.value().vel);
    }
    static double c;
 };
+//--comment
+//--Why are you setting the damping constant to 0? Also, why is it static?!
+//--START
 double DampingForce::c = 0;
+//--END
 
 /* Combined force of F1 & F2 */
 template<typename F1, typename F2>
@@ -300,12 +314,16 @@ int main(int argc, char** argv) {
   }
 
   /* Set K & L */
+  //--comment
+  //--Why not use your edge iterator to iterator over edges here?
+  //--START
   for(auto it = graph.node_begin(); it != graph.node_end(); ++it){
      for(auto ij = (*it).edge_begin(); ij != (*it).edge_end(); ++ij){
 	(*ij).value().K = 100;
 	(*ij).value().L = (*ij).length();
      }
   } 
+  //--END
 
   // Print out the stats
   std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
@@ -329,6 +347,7 @@ int main(int argc, char** argv) {
     //std::cout << "t = " << t << std::endl;
     //symp_euler_step(graph, t, dt, Problem1Force());
     symp_euler_step(graph, t, dt, make_combined_force(GravityForce(), MassSpringForce(), DampingForce()));
+    return 1;
 
     // Update viewer with nodes' new positions
     viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
@@ -347,5 +366,13 @@ int main(int argc, char** argv) {
       CME212::sleep(0.001);
   }
 
+  //--comment
+  //--Your implementation is not working really working past the functionality of the Problem1Force section.
+  //--In particular, your mass spring force computations do not seem to be correct. The sheet should not be
+  //--"curling" into itself at rest. Please check the examples posted and ensure your underlying graph is working properly.
+  //--END 
+
   return 0;
 }
+
+//--grade6

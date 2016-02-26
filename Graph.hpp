@@ -248,6 +248,16 @@ public:
    *
    * Complexity: linear in size() + degree of node n.
    */
+   //--comment
+   //--Your current implementation of remove node is not good design due to the
+   //--use of a single node id value that is the index into your data structure.
+   //--You really should be keeping a node uid as you did previously, and maintaing
+   //--a mapping of the indices in the data structure to this uid. Your current
+   //--method is bad because once you remove a node from your data structure,
+   //--all the indices will shift, rendering any dispatched node objects
+   //--with an index greater than the removed node invalid. Really make sure to 
+   //--check out the posted examples to see what I am talking about.
+   //--END
    size_type remove_node(const Node& n){
   	if(!has_node(n))
 		return 0;

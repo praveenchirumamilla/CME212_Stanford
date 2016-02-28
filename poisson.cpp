@@ -17,15 +17,91 @@
 #include "CME212/Util.hpp"
 #include "CME212/Point.hpp"
 #include "CME212/BoundingBox.hpp"
+#include <boost/numeric/mtl/mtl.hpp>
+#include <boost/numeric/itl/itl.hpp>
+#include "math.h"
+//#include "BoundingBox.hpp"
 
 #include "Graph.hpp"
 
+struct NodeInfo
+{
+	double val;
+	bool boundary;
+};
 
 // HW3: YOUR CODE HERE
 // Define a GraphSymmetricMatrix that maps
 // your Graph concept to MTL's Matrix concept. This shouldn't need to copy or
 // modify Graph at all!
-typedef Graph<char,char> GraphType;  //<  DUMMY Placeholder
+typedef Graph<NodeInfo, double> GraphType;  //<  DUMMY Placeholder
+
+class GraphSymmetricMatrix
+{
+	public:
+		GraphSymmetricMatrix(GraphType* graph):myGraph(graph){
+		}
+
+		/** Helper function to perform multiplication. Allows for delayed
+   	 	*   evaluation of results.
+	 	*  Assign::apply(a,b) resolves to an assignment operation such as
+	 	*    a += b, a -= b, or a = b.
+	 	*  @pre @size(v) == myGraph->size() */
+		template <typename VectorIn, typename VectorOut, typename Assign>
+		void mult(const VectorIn& v, VectorOut& w, Assign) const{
+		  for(auto it = myGraph->node_begin(); it != myGraph->node_end(); ++it){
+		    unsigned int i = (*it).index();
+		    int tot = 0;
+
+	       	    //check if i is on boundary:
+		    if((*it).value().boundary){
+			tot = v[i];   // A[i, j] == 1 if i is on boundary.
+		    }else{
+		        for(auto ij = (*it).edge_begin(); ij != (*it).edge_end(); ++ij){	
+			  if(!(*ij).node2().value().boundary){
+                            tot += v[(*ij).node2().index()]; // if j is on boundary
+			  }
+			}
+		    //}
+		      tot -= (*it).degree() * v[i]; // L[i, j]	
+		    }
+	            Assign::apply(w[i], tot);
+		 }
+		}
+
+		/** Matvec forwards to MTL's lazy mat_cvec_multiplier operator */
+		template <typename Vector>
+		mtl::vec::mat_cvec_multiplier<GraphSymmetricMatrix, Vector>
+		operator*(const Vector& v) const {
+			return mtl::vec::mat_cvec_multiplier<GraphSymmetricMatrix, Vector>(*this, v); 
+
+		}
+
+	//helper function for number of rows
+	unsigned int rows() const{
+		return myGraph->size();
+	}
+
+	private:
+		GraphType* myGraph;
+
+};
+
+/** The number of elemenets in the matrix. */
+inline std::size_t size(const GraphSymmetricMatrix& A){
+	return A.rows()*A.rows();
+}
+
+/** The number of rows in the matrix */
+inline std::size_t num_rows(const GraphSymmetricMatrix& A){
+	return A.rows();
+}
+
+/** The number of columns in the matrix */
+inline std::size_t num_cols(const GraphSymmetricMatrix& A){
+	return A.rows();
+}
+
 
 /** Remove all the nodes in graph @a g whose posiiton is within Box3D @a bb.
  * @post For all i, 0 <= i < @a g.num_nodes(),
@@ -33,7 +109,15 @@ typedef Graph<char,char> GraphType;  //<  DUMMY Placeholder
  */
 void remove_box(GraphType& g, const Box3D& bb) {
   // HW3: YOUR CODE HERE
-  (void) g; (void) bb;   //< Quiet compiler
+  auto it = g.node_begin();
+  while(it != g.node_end()){
+	if(bb.contains((*it).position())){
+		g.remove_node(it);
+	}else{
+		++it;
+	}
+  }
+  //(void) g; (void) bb;   //< Quiet compiler
   return;
 }
 
@@ -85,6 +169,67 @@ int main(int argc, char** argv)
   // Define b using the graph, f, and g.
   // Construct the GraphSymmetricMatrix A using the graph
   // Solve Au = b using MTL.
+
+  /** Force Function */
+  class forceFun{
+    public:
+	double operator()(GraphType::node_type n){
+	  return 5*cos(norm_1(n.position()));
+	}
+  };
+
+  /** Boundary Condition */
+  class boundaryCondition{
+  public:
+	double operator()(GraphType::node_type n){
+	  if(norm_inf(n.position()) == 1)
+		return 0;
+	  else if((norm_inf(n.position() - Point(0.6, 0.6, 0)) < 0.2) || (norm_inf(n.position() - Point(-0.6, -0.6, 0)) < 0.2))
+		return -0.2;
+          else if((norm_inf(n.position() - Point(-0.6, 0.6, 0)) < 0.2) || (norm_inf(n.position() - Point(0.6, -0.6, 0)) < 0.2))
+		return -0.2;
+	  else if(BoundingBox(Point(-0.6, -0.2, -1), Point(0.6, 0.2, 1)).contains(n.position()))		
+		return 1;
+	  else
+		return -2;
+	}
+  };
+
+  /** b Definition */
+  forceFun f;
+  boundaryCondition g;
+  mtl::dense_vector<double> b(graph.size());
+
+  for(auto it = graph.node_begin(); it != graph.node_end(); ++it){
+     if((*it).value().boundary){
+	b[(*it).index()] = g(*it);
+     }else{
+	b[(*it).index()] = h*h*f(*it);
+        for(auto ij = (*it).edge_begin(); ij != (*it).edge_end(); ++ij){
+	  if((*ij).node2().value().boundary)
+		b[(*it).index()] -= g((*ij).node2());
+	}
+     }
+  }
+
+  /** GraphSymmetricMatrix A using graph */
+  GraphSymmetricMatrix A(&graph);
+
+  /** SDLViewer */
+  CME212::SDLViewer viewer;
+  auto node_map = viewer.empty_node_map(graph);
+  viewer.launch();
+
+  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map); 
+  viewer.center_view();
+
+  /** Solve Au =b */
+  itl::pc::identity<GraphSymmetricMatrix> P(A);
+  mtl::dense_vector<double> x(graph.size(), 0.0);
+  
+  itl::cyclic_iteration<double> iter(b, 100, 1e-11, 0.0, 10);
+  cg(A, x, b, p, iter);
 
   return 0;
 }

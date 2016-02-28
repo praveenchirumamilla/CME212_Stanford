@@ -12,6 +12,7 @@ EXEC += test_nodes
 EXEC += test_edges
 EXEC += mtl_test
 EXEC += poisson
+EXEC += mtl_test
 
 # Get the shell name to determine the OS
 UNAME := $(shell uname)
@@ -35,6 +36,9 @@ DEPSFLAGS = -MD -MF $(DEPSFILE) -MP
 # Define any directories containing header files
 #   To include directories use -Ipath/to/files
 INCLUDES += -I.
+#INCLUDES  += -I/MTL-4.0.9555-Linux/usr/include/.
+INCLUDES += -I./MTL
+#INCLUDES += -I./CME212
 
 # Define CXX compile flags
 CXXFLAGS += -std=c++11 -O3 -funroll-loops -W -Wall -Wextra #-Wfatal-errors

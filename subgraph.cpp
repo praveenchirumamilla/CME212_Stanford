@@ -179,6 +179,7 @@ int main(int argc, char** argv)
 
 //--COMMENT
 //--Great job! Everything works as specified!
+//--You seem to have forgotten to add the colors though!
 //--Try to fix your indentation. One easy way to do this with vim/vi is to go to visual mode and type gg=G :)
 //--END
 

@@ -4,6 +4,9 @@
 #include <iostream>
 #include <cmath>
 
+#include "../thrust/iterator/transform_iterator.h"
+#include "../thrust/iterator/counting_iterator.h"
+
 /** @file Point.hpp
  * @brief Define the Point class for 3D points.
  */

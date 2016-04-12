@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Point.hpp"
+
 namespace CME212 {
 
 /** @class BoundingBox

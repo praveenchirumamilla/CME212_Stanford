@@ -24,6 +24,9 @@
 #include "Point.hpp"
 #include "Color.hpp"
 
+#include "../thrust/iterator/transform_iterator.h"
+#include "../thrust/iterator/counting_iterator.h"
+
 
 namespace CME212 {
 

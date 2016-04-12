@@ -50,8 +50,7 @@ struct IdentityMatrix{
 	}
 
 	private:
-		//Empty
-		unsigned int rows;
+	  unsigned int rows;
 };
 
 /** The number of elemenets in the matrix. */
@@ -87,7 +86,7 @@ struct Collection<IdentityMatrix> {
 	typedef double value_type;
 	typedef unsigned size_type;
 };
-}
+} // end namespace mtl
 
 
 int main()
@@ -104,10 +103,10 @@ int main()
   itl::pc::identity<IdentityMatrix> P(I);
   mtl::dense_vector<double> x(row, 1), b(row);
   b = I * x;
-  x = 0;
+  x = 0;  // start with x = 0
 
-  itl::cyclic_iteration<double> it(b, 100, 1e-11, 0.0, 5);
-  cg(I, x, b, P, it);
+  itl::cyclic_iteration<double> it(b, 100, 1e-10, 0.0, 5);
+  itl::cg(I, x, b, P, it);
   std::cout << x << std::endl;
   
   return 0;

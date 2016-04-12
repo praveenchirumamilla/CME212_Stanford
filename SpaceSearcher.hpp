@@ -8,6 +8,14 @@
 #include "CME212/BoundingBox.hpp"
 #include "MortonCoder.hpp"
 
+#include "thrust/iterator/transform_iterator.h"
+#include "thrust/iterator/counting_iterator.h"
+#include "thrust/execution_policy.h"
+#include "thrust/for_each.h"
+#include "thrust/sort.h"
+#include <tuple.h>
+#include <functional>
+
 /** @class SpaceSearcher
  * @brief Class for making spatial searches, which uses the MortonCoder
  *        class as a backend.
@@ -19,6 +27,7 @@
  *
  * See "space_search_test.cpp" for a usage example.
  */
+
 template <typename T, int L = 7>
 class SpaceSearcher
 {
@@ -78,9 +87,24 @@ class SpaceSearcher
    * @pre For all i in [@a first,@a last), @a bb.contains(@a t2p(*i)).
    */
   template <typename TIter, typename T2Point>
-  SpaceSearcher(const Box3D& bb,
-                TIter first, TIter last, T2Point t2p) {
+  SpaceSearcher(const Box3D& bb, TIter first, TIter last, T2Point t2p): mc_(bb){
     // HW4: YOUR CODE HERE
+    // parallelize the code.
+   #pragma omp parallel
+   {
+     for(auto it = first; it!= last; ++it)
+     {
+        #pragma omp single nowait
+        {
+          code_type code = mc_.code(t2p(*it));
+          z_data_.push_back(thrust::tuple<code_type, T> (code, *it));
+        }
+      } 
+    }
+
+    thrust::sort(z_data_.begin(), z_data_.end(), [](morton_pair mp1, morton_pair mp2){
+              return code_type(mp1) < code_type(mp2);
+     }); 
   }
 
   /** @brief SpaceSearcher Constructor.
@@ -108,6 +132,31 @@ class SpaceSearcher
                 TIter tfirst, TIter tlast,
                 PointIter pfirst, PointIter plast) {
     // HW4: YOUR CODE HERE
+    // parallelize the code.
+   #pragma omp parallel
+   {
+     for(auto it = tfirst; it!= tlast; ++it)
+     {
+        #pragma omp single nowait
+        {
+          #pragma omp parallel
+          {
+            for(auto ij = pfirst; ij != plast; ++ij)
+            {
+              #pragma omp single nowait
+              {
+                code_type code = mc_.code(ij);
+                z_data_.push_back(thrust::tuple<code_type, T> (code, ij));
+              }
+            }
+          }
+        }
+     } 
+    }
+
+    thrust::sort(z_data_.begin(), z_data_.end(), [](morton_pair p1, morton_pair p2){
+              return code_type(p1) < code_type(p2);
+     });
   }
 
   ///////////////
@@ -212,9 +261,17 @@ class SpaceSearcher
     T value_;
     // Cast operator so we can treat a morton_pair like a code_type
     operator const code_type&() const { return code_; }
+
     // HW4: YOUR CODE HERE
+    // Constructor for morton_pair
+    morton_pair(thrust::tuple<code_type, T> tup){
+       code_ = tup.get<0>();
+       value_ = tup.get<1>();
+    }  
+
   };
 
   // Pairs of Morton codes and data items of type T.
   std::vector<morton_pair> z_data_;
+
 };

@@ -16,7 +16,10 @@
 #include "CME212/Point.hpp"
 
 #include "Graph.hpp"
-
+//#include "thrust/iterator/transform_iterator.h"
+//#include "thrust/iterator/counting_iterator.h"
+#include "thrust/execution_policy.h"
+#include "thrust/for_each.h"
 
 
 // Gravity in meters/sec^2
@@ -38,6 +41,7 @@ struct EdgeData {
 typedef Graph<NodeData, EdgeData> GraphType;
 typedef typename GraphType::node_type Node;
 typedef typename GraphType::edge_type Edge;
+typedef typename GraphType::NodeIterator node_iterator;
 
 
 /* plane constraint */
@@ -108,6 +112,96 @@ combineTwoConstraints<C1, C2> totalConstraint(C1 c1 = C1(), C2 c2 = C2()){
 	return combineTwoConstraints<C1, C2>(c1, c2);
 }
 
+// helper functor for SelfCollisionConstraints
+struct collision_fun{
+
+   __host__ __device__
+
+   GraphType  g_;
+   void operator() (Node n){
+       const Point & center = n. position (); 
+       double radius2 = std::numeric_limits<double>::max (); 
+       
+       for(auto ij = n.edge_begin(); ij != n.edge_end(); ++ij){
+         Edge e = *ij;
+         radius2 = std :: min ( radius2 , normSq (e.node2().position () - center )); 
+       }
+       radius2 *= 0.9; 
+
+      for (auto ik = g_.node_begin(); ik != g_.node_end(); ++ik) { 
+        Node n2 = *ik;
+        Point r = center - n2. position (); 
+        double l2 = normSq (r); 
+        if (n != n2 && l2 < radius2 ) { 
+          // Remove our velocity component in r 
+          n. value (). vel -= (dot(r, n. value (). vel) / l2) * r; 
+        } 
+      } 
+    }
+
+    public:
+    collision_fun(GraphType g){
+          g_ = g;
+    }
+};
+
+// self collision constraint
+ struct SelfCollisionConstraint { 
+  void operator ()( GraphType & g, double ) const { 
+
+   // parallize the constraint using for_each:
+   collision_fun cfun = collision_fun(g);
+   thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), cfun);
+
+   }
+ }; 
+
+
+// position functor
+struct position_fun{
+   
+    __host__ __device__
+ 
+    double dt_;
+    void operator() (Node n){
+       if((n.position() != Point(0,0,0)) && (n.position() != Point(1,0,0))){
+            n.position() += n.value().vel * dt_;
+       }
+
+       if(n.position() == Point(0,0,0) || n.position() == Point(1, 0, 0)){
+        // set its velocity as 0
+        n.value().vel = Point(0, 0, 0);
+      } 
+    }
+     
+    public:
+    position_fun(double dt){
+          dt_ = dt;
+     } 
+}; 
+
+// velocity functor
+template <typename Force>
+struct velocity_fun{
+ 
+   __host__ __device__
+
+   Force force_;
+   double dt_;
+   double t_;
+   void operator() (Node n){
+      n.value().vel += force_(n, t_) * (dt_ / n.value().mass);
+   }
+
+   public:
+   velocity_fun(Force force, double t, double dt){
+      force_ = force;
+      dt_ = dt;
+      t_ = t;
+    }
+}; 
+ 
+
 /** Change a graph's nodes according to a step of the symplectic Euler
  *    method with the given node force.
  * @param[in,out] g      Graph
@@ -121,15 +215,15 @@ combineTwoConstraints<C1, C2> totalConstraint(C1 c1 = C1(), C2 c2 = C2()){
  *           where n is a node of the graph and @a t is the current time.
  *           @a force must return a Point representing the force vector on Node
  *           at time @a t.
- */
+ */ 
 template <typename G, typename F>
 double symp_euler_step(G& g, double t, double dt, F force) {
 
-  /* sum of two constraints */
+  // sum of two constraints 
   auto tempConstraint = totalConstraint(removeSphereConstraint(), planeConstraint());
   
-  // Compute the t+dt position
-  for (auto it = g.node_begin(); it != g.node_end(); ++it) {
+ /*  // Compute the t+dt position
+   for (auto it = g.node_begin(); it != g.node_end(); ++it) {
     auto n = *it;
 
     if(n.position() != Point(0,0,0) && n.position() != Point(1, 0, 0)){
@@ -137,26 +231,34 @@ double symp_euler_step(G& g, double t, double dt, F force) {
       // Update the position of the node according to its velocity
       // x^{n+1} = x^{n} + v^{n} * dt
       n.position() += n.value().vel * dt;
-    }
+    } 
+   
 
     if(n.position() == Point(0,0,0) || n.position() == Point(1, 0, 0)){
 
       // set its velocity as 0
       n.value().vel = Point(0, 0, 0);
     }
-  }
-  
+  }  */
+
+  // using for_each iterator for calculating t+dt position
+  position_fun pos = position_fun(dt);
+  thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), pos);
 
   // Compute the t+dt velocity
   tempConstraint(g, 0);
-  for (auto it = g.node_begin(); it != g.node_end(); ++it) {
+ /* for (auto it = g.node_begin(); it != g.node_end(); ++it) {
     auto n = *it;
     // v^{n+1} = v^{n} + F(x^{n+1},t) * dt / m
     n.value().vel += force(n, t) * (dt / n.value().mass);
-  }
+  } */
+
+  // using for_each iterator for t+dt velocity
+  velocity_fun<F> vfunc = velocity_fun<F>(force, t, dt);
+  thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), vfunc);
 
   return t + dt;
-}
+}  
 
 
 /** Force function object for HW2 #1. */
@@ -295,14 +397,16 @@ int main(int argc, char** argv) {
   // Set initial conditions for your nodes, if necessary.
   /* Set mass and velocity */
   for(auto it = graph.node_begin(); it != graph.node_end(); ++it){
-	(*it).value().mass = float(1)/graph.size();
+	//(*it).value().mass = float(1)/graph.size();
+        (*it).value().mass = (1.0/graph.num_nodes())/graph.num_nodes();
 	(*it).value().vel = Point(0,0,0);
   }
 
   /* Set K & L */
   for(auto it = graph.node_begin(); it != graph.node_end(); ++it){
      for(auto ij = (*it).edge_begin(); ij != (*it).edge_end(); ++ij){
-	(*ij).value().K = 100;
+	//(*ij).value().K = 100;
+        (*ij).value().K = 100.0/graph.num_nodes();
 	(*ij).value().L = (*ij).length();
      }
   } 
@@ -321,7 +425,8 @@ int main(int argc, char** argv) {
   viewer.center_view();
 
   // Begin the mass-spring simulation
-  double dt = 0.001;
+  //double dt = 0.001;
+  double dt = 1.0/graph.num_nodes();
   double t_start = 0;
   double t_end = 5.0;
 

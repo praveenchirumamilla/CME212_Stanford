@@ -23,6 +23,12 @@ namespace detail {
  */
 inline uint32_t spread_bits(uint32_t x) {
   // HW4: YOUR CODE HERE
+  // Just opposite of compacting bits. refer to compact logic.
+  x = (x | (x << 16)) & 0b00000011000000000000000011111111;
+  x = (x | (x <<  8)) & 0b00000011000000001111000000001111;
+  x = (x | (x <<  4)) & 0b00000011000011000011000011000011;
+  x = (x | (x <<  2)) & 0b00001001001001001001001001001001;
+
   return x;
 }
 
@@ -34,6 +40,13 @@ inline uint32_t spread_bits(uint32_t x) {
  */
 inline uint32_t compact_bits(uint32_t x) {
   // HW4: YOUR CODE HERE
+  // first one is just for safety to get correct spread bits.
+  x &= 0b00001001001001001001001001001001;
+  x = (x | (x >>  2)) & 0b00000011000011000011000011000011;
+  x = (x | (x >>  4)) & 0b00000011000000001111000000001111;
+  x = (x | (x >>  8)) & 0b00000011000000000000000011111111;
+  x = (x | (x >> 16)) & 0b00000000000000000000001111111111;
+  
   return x;
 }
 
@@ -184,9 +197,9 @@ class MortonCoder {
     if (delta == 0) return idx;
 
     // Smear into a low bit mask, i.e. 0000111111111111
-    delta = detail::smear_low_1(delta >> 1);
+    delta = ::detail::smear_low_1(delta >> 1);
     // Chi masks high bits we cannot carry into
-    const code_type chi = detail::smear_low_3(idx ^ max);
+    const code_type chi = ::detail::smear_low_3(idx ^ max);
     // The first 0 in idx and chi that is higher than delta
     delta = ~(idx | ~chi | delta);
     delta = (delta & -delta) - 1;
@@ -216,9 +229,9 @@ class MortonCoder {
    * @post n = [... z_1 y_1 x_1 z_0 y_0 x_0]
    */
   static inline code_type interleave(const Point& p) {
-    return detail::spread_bits((code_type) p.x)
-        | (detail::spread_bits((code_type) p.y) << 1)
-        | (detail::spread_bits((code_type) p.z) << 2);
+    return ::detail::spread_bits((code_type) p.x)
+        | (::detail::spread_bits((code_type) p.y) << 1)
+        | (::detail::spread_bits((code_type) p.z) << 2);
   }
 
   /** Deinterleave the bits from n into a Point.
@@ -228,9 +241,9 @@ class MortonCoder {
    * @post result.z = [... n_8 n_5 n_2]
    */
   static inline Point deinterleave(code_type c) {
-    return Point(detail::compact_bits(c),
-                 detail::compact_bits(c >> 1),
-                 detail::compact_bits(c >> 2));
+    return Point(::detail::compact_bits(c),
+                 ::detail::compact_bits(c >> 1),
+                 ::detail::compact_bits(c >> 2));
   }
 };
 
